@@ -1,6 +1,6 @@
 {
   "name": "bun-plugin-http-import",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "module": "index.ts",
   "type": "module",
   "author": "Sergiu Toderascu",
@@ -12,7 +12,13 @@
   "devDependencies": {
     "@types/bun": "latest"
   },
-  "peerDependencies": {
-    "typescript": "^5.5.0"
-  }
+  "scripts": {
+    "start": "bun .",
+    "dev": "NODE_ENV=dev bun --watch ./test",
+    "clean": "rm -rf .import",
+    "restart": "bun run clean && bun run start",
+    "prepublishOnly": "bun run clean",
+    "prepare": "bun --preload bun-plugin-http-import -e 'console.log(import.meta.resolve(\"bun-plugin-http-import\"))'"
+  },
+  "packageManager": "bun@1.1.33"
 }

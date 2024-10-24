@@ -1,15 +1,15 @@
 import { mkdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { symlink } from 'node:fs/promises';
 import { type BunPlugin } from "bun";
 import pkg from './package.json'
 
 const params: {
     [k: string]: any;
 } = Object.fromEntries(new URL(import.meta.url).searchParams.entries())
-params.type = params.type || 'local'
+params.type = params.type || 'global'
 //
+const dev = process.env.NODE_ENV === 'development'
 const dir = '.import'
 const cwd = process.cwd()
 const type: 'local' | 'global' = params.type
@@ -64,14 +64,18 @@ export const plugin: BunPlugin = {
 
 
 try {
-    await import(statusFilePath).then(console.log).catch(init)
-    Bun.plugin(plugin);
+    console.log(`${pkg.name} v${pkg.version} ${process.env.NODE_ENV ?? ''} (${type})`)
+
+    await import(statusFilePath)
+        .then(console.log)
+        .catch(init)
+        .finally(() => Bun.plugin(plugin))
 } catch (err) {
     throw new Error(`Failed to load status file: ${statusFilePath}`)
 }
 
 export async function init(): Promise<any> {
-    console.log(`\n\n\tInitializing ${pkg.name} v${pkg.version}...\n\n`)
+    console.log(`\n\n\tInitializing (${type}) ${pkg.name} v${pkg.version}...\n\n`)
 
     await ensureBunfigPreload(bunConfigFilePath)
     await ensureCompilerOptionsPaths(tsConfigFilePath, cachePath)
@@ -79,13 +83,10 @@ export async function init(): Promise<any> {
         status: 'success',
         version: pkg.version,
         timestamp: Date.now(),
-        date: new Date().toISOString(),
+        date: new Date().toUTCString(),
         rootPath,
         cachePath,
-        metaPath,
-        tsConfigFilePath,
-        bunConfigFilePath,
-        statusFilePath
+        metaPath
     }))
 
     return import(statusFilePath)
@@ -142,14 +143,11 @@ async function ensureCompilerOptionsPaths(tsConfigFilePath: string, cachePath: s
     const paths = newTsconfig.compilerOptions.paths;
 
     if (!paths["http://*"] || !paths["https://*"] || !paths['web:*'] || force) {
-        if (!paths["http://*"] || force)
-            paths["http://*"] = [cachePath.replace(cwd, '.') + '/http/*'];
+        paths["http://*"] = [cachePath.replace(cwd, '.') + '/http/*'];
 
-        if (!paths["https://*"] || force)
-            paths["https://*"] = [cachePath.replace(cwd, '.') + '/https/*'];
+        paths["https://*"] = [cachePath.replace(cwd, '.') + '/https/*'];
 
-        if (!paths["web:*"] || force)
-            paths["web:*"] = [cachePath.replace(cwd, '.') + '/http/*', cachePath.replace(cwd, '.') + '/https/*'];
+        paths["web:*"] = [...paths["http://*"], ...paths["https://*"]];
 
         await Bun.write(tsConfigFilePath, JSON.stringify(newTsconfig, null, 4));
     }
@@ -179,16 +177,22 @@ async function writeFile(path: string, contents: any) {
     }
 }
 
-async function createSymlink() {
-    const a = Bun.fileURLToPath(import.meta.url)
-    const b = join(cwd, 'plugin.ts')
+async function createSymlink(a: string, b: string) {
     try {
+        const { symlink } = await import('node:fs/promises');
         await symlink(a, b);
-        console.log('Symlink created successfully!', [a, b]);
+        console.log('Symlink created successfully!');
+        console.log(`   from: ${a}`);
+        console.log(`   to: ${b}`);
     } catch (err: any) {
-        console.log(err.message);
-        console.log([a, b]);
+        console.log(`Failed to create symlink: ${err.message}`);
+        console.log(`   from: ${a}`);
+        console.log(`   to: ${b}`);
     }
+}
+
+export async function linkGlobal() {
+    await createSymlink(globalPath, localPath);
 }
 
 
