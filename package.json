@@ -3,13 +3,16 @@
   "version": "0.0.1",
   "module": "index.ts",
   "type": "module",
+  "author": "Sergiu Toderascu",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/serebano/bun-plugin-http-import.git"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5.5.0"
-  },
-  "bun": {
-    "plugin": "bun-plugin-http-import"
   }
 }

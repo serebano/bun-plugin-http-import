@@ -38,7 +38,7 @@ const rx_relative_path = /^\.\.?\//;
 const rx_absolute_path = /^\//;
 
 
-export const plugin = {
+export const plugin: BunPlugin = {
     name: "http-import",
     setup(builder) {
         builder.onResolve({ filter: rx_relative_path }, (args) => {
@@ -65,11 +65,12 @@ export const plugin = {
 
 try {
     await import(statusFilePath).then(console.log).catch(init)
+    Bun.plugin(plugin);
 } catch (err) {
     throw new Error(`Failed to load status file: ${statusFilePath}`)
 }
 
-export async function init() {
+export async function init(): Promise<any> {
     console.log(`\n\n\tInitializing ${pkg.name} v${pkg.version}...\n\n`)
 
     await ensureBunfigPreload(bunConfigFilePath)
@@ -87,8 +88,6 @@ export async function init() {
         statusFilePath
     }))
 
-    Bun.plugin(plugin);
-
     return import(statusFilePath)
 }
 
@@ -98,8 +97,8 @@ async function ensureBunfigPreload(bunConfigFilePath: string) {
         console.log('bunfig exists', bunConfigFilePath, bunfig, bunfig.preload.includes(import.meta.url))
     } catch (err) {
         try {
-            await Bun.write(bunConfigFilePath, `preload = ["${import.meta.url}"]`)
-            process.exit()
+            const preloadModule = 'bun-plugin-http-import' //import.meta.url
+            await Bun.write(bunConfigFilePath, `preload = ["${preloadModule}"]`)
         } catch (err) {
             console.log('ensureBunfigPreload', err)
         }
@@ -144,13 +143,13 @@ async function ensureCompilerOptionsPaths(tsConfigFilePath: string, cachePath: s
 
     if (!paths["http://*"] || !paths["https://*"] || !paths['web:*'] || force) {
         if (!paths["http://*"] || force)
-            paths["http://*"] = [cachePath + '/http/*'];
+            paths["http://*"] = [cachePath.replace(cwd, '.') + '/http/*'];
 
         if (!paths["https://*"] || force)
-            paths["https://*"] = [cachePath + '/https/*'];
+            paths["https://*"] = [cachePath.replace(cwd, '.') + '/https/*'];
 
         if (!paths["web:*"] || force)
-            paths["web:*"] = [cachePath + '/http/*', cachePath + '/https/*'];
+            paths["web:*"] = [cachePath.replace(cwd, '.') + '/http/*', cachePath.replace(cwd, '.') + '/https/*'];
 
         await Bun.write(tsConfigFilePath, JSON.stringify(newTsconfig, null, 4));
     }

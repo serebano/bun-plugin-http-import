@@ -1,1 +1,1 @@
-preload = ["file:///Users/serebano/bun-plugin-http-import/index.ts"]
+preload = ["bun-plugin-http-import"]
